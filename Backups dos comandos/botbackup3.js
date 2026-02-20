@@ -1,0 +1,172 @@
+const { Client, LocalAuth } = require('whatsapp-web.js');
+const qrcode = require('qrcode-terminal');
+const fs = require('fs');
+const axios = require('axios');
+
+console.log('🔄 Iniciando bot...');
+
+// Carregar configurações do painel
+let config = { comandos: {}, testes: {} };
+try {
+    config = JSON.parse(fs.readFileSync('./bot-config.json'));
+    console.log('✅ Configurações carregadas do painel');
+    console.log('📋 Comandos do painel:', Object.keys(config.comandos).join(', ') || 'nenhum');
+} catch (e) {
+    console.log('⚠️ Usando configuração padrão (sem comandos)');
+}
+
+const client = new Client({
+    authStrategy: new LocalAuth(),
+    puppeteer: {
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
+    }
+});
+
+// ========== FUNÇÕES AUXILIARES ==========
+
+// Função para chamar a API de teste M2
+async function gerarTesteM2() {
+    try {
+        console.log('🌐 Chamando API M2...');
+        const response = await axios.get('https://mk21plataformas.sigma.st/api/chatbot/g516VvQ1jl/ANKWPdyWPR', {
+            timeout: 15000
+        });
+        
+        console.log('✅ Resposta recebida da API');
+        
+        // Extrai a resposta da API
+        let respostaAPI = '';
+        
+        if (response.data.reply) {
+            respostaAPI = response.data.reply;
+        } else if (response.data.message) {
+            respostaAPI = response.data.message;
+        } else if (response.data.data && response.data.data[0]?.message) {
+            respostaAPI = response.data.data[0].message;
+        } else {
+            respostaAPI = JSON.stringify(response.data, null, 2);
+        }
+        
+        // Limita tamanho
+        if (respostaAPI.length > 5000) {
+            respostaAPI = respostaAPI.substring(0, 5000) + '\n\n... (resumo)';
+        }
+        
+        return respostaAPI;
+        
+    } catch (error) {
+        console.error('❌ Erro na API M2:', error.message);
+        return '❌ *Erro ao gerar teste M2*\n\nTente novamente mais tarde.';
+    }
+}
+
+// Função para atualizar status no painel
+async function atualizarStatus(online, numero = null) {
+    try {
+        await axios.post('http://localhost:3000/api/bot/status', {
+            online: online,
+            numero: numero
+        });
+    } catch (e) {}
+}
+
+// ========== EVENTOS DO WHATSAPP ==========
+
+// QR Code
+client.on('qr', (qr) => {
+    console.log('\n📱 ESCANEIE O QR CODE:\n');
+    qrcode.generate(qr, { small: true });
+    console.log('\n⏳ Aguardando conexão...\n');
+});
+
+// Bot pronto
+client.on('ready', async () => {
+    console.log('✅ Bot conectado ao WhatsApp!');
+    console.log('📱 Número:', client.info.wid.user);
+    await atualizarStatus(true, client.info.wid.user);
+});
+
+// Autenticação falhou
+client.on('auth_failure', (msg) => {
+    console.error('❌ Falha na autenticação:', msg);
+});
+
+// Desconectou
+client.on('disconnected', async (reason) => {
+    console.log('🔴 Bot desconectado. Motivo:', reason);
+    await atualizarStatus(false);
+    console.log('🔄 Tentando reconectar em 10 segundos...');
+    setTimeout(() => client.initialize(), 10000);
+});
+
+// ========== PROCESSAR MENSAGENS ==========
+client.on('message', async (msg) => {
+    if (msg.fromMe) return;
+    
+    const texto = msg.body.toLowerCase().trim();
+    const remetente = msg.from;
+    
+    console.log(`📨 [${remetente}]: ${texto}`);
+
+    // ===== 1. PRIORIDADE: COMANDOS DO PAINEL =====
+    for (let [cmd, dados] of Object.entries(config.comandos)) {
+        if (dados.ativo && texto === cmd.toLowerCase()) {
+            
+            console.log(`✅ Comando do painel: ${cmd}`);
+            
+            // COMANDO ESPECIAL M2 - Chama a API real
+            if (cmd.toLowerCase() === 'm2') {
+                await msg.reply('🧪 *Gerando teste M2...*\n\n⏳ Aguarde, consultando API...');
+                const respostaAPI = await gerarTesteM2();
+                await msg.reply(`🧪 *RESULTADO DO TESTE M2*\n\n${respostaAPI}`);
+            } 
+            else {
+                // Comando normal do painel
+                await msg.reply(dados.resposta);
+            }
+            
+            return; // Sai após processar
+        }
+    }
+
+    // ===== 2. FALLBACK: Comandos fixos (só se NÃO existirem no painel) =====
+    
+    // Menu - só se não existir comando 'menu' no painel
+    if (!config.comandos['menu'] && (texto === 'menu' || texto === 'oi' || texto === 'olá')) {
+        await msg.reply('📺 *EMYCOM PLAY*\n\nComandos disponíveis:\n• M2 - Gerar teste automático\n• AJUDA - Instruções\n• SUPORTE - Atendente');
+        return;
+    }
+    
+    // Ajuda - só se não existir comando 'ajuda' no painel
+    if (!config.comandos['ajuda'] && (texto === 'ajuda' || texto === 'help')) {
+        await msg.reply('📖 *AJUDA*\n\n1. Envie M2 para teste\n2. Envie MENU para opções\n3. Envie SUPORTE para atendente');
+        return;
+    }
+    
+    // Suporte - só se não existir comando 'suporte' no painel
+    if (!config.comandos['suporte'] && (texto === 'suporte' || texto === 'atendente')) {
+        await msg.reply('👨‍💼 *SUPORTE*\n\n📱 WhatsApp: +55 (11) 99999-9999\n📧 Email: suporte@emycom.com');
+        return;
+    }
+
+    // ===== 3. NENHUM COMANDO ENCONTRADO =====
+    await msg.reply('❓ Comando não reconhecido.\n\nDigite *MENU* para ver as opções disponíveis.');
+});
+
+// ========== MONITORAR MUDANÇAS NO CONFIG ==========
+fs.watch('./bot-config.json', () => {
+    try {
+        config = JSON.parse(fs.readFileSync('./bot-config.json'));
+        console.log('🔄 Configuração atualizada pelo painel!');
+        console.log('📋 Comandos agora:', Object.keys(config.comandos).join(', ') || 'nenhum');
+    } catch (e) {
+        console.log('⚠️ Erro ao recarregar config');
+    }
+});
+
+// ========== INICIAR ==========
+client.initialize();
+
+process.on('uncaughtException', (err) => {
+    console.error('❌ Erro não capturado:', err);
+});

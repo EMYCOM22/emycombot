@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: emycombot
+    runtime: node
+    repo: https://github.com/SEU-USUARIO/emycombot
+    plan: free
+    buildCommand: npm install
+    startCommand: node bot.js
+    envVars:
+      - key: NODE_ENV
+        value: production

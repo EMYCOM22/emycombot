@@ -1,0 +1,75 @@
+{
+  "comandos": {
+    "1": {
+      "resposta": "Aguarde para ser atendido!",
+      "ativo": true,
+      "modo": "escrita_exata"
+    },
+    "2": {
+      "resposta": "Otimo!\n\nVocê receberá uma conta teste, assim que receber, siga as instruções para rodar sua conta.\n\nDigite M2 para gerar seu teste.",
+      "ativo": true,
+      "modo": "escrita_exata"
+    },
+    "3": {
+      "resposta": "Acesse o link e conheça nossos Aplicativos.\n\nhttps://mk21.cbstore.top/",
+      "ativo": true,
+      "modo": "escrita_exata"
+    },
+    "4": {
+      "resposta": "Pix para pagamento:\n\nemycom.pix@gmail.com\n\nAssim que efetuar o pagamento envie o comprovante.",
+      "ativo": true,
+      "modo": "escrita_exata"
+    },
+    "oi": {
+      "resposta": "Seja Bem Vindo ao Grupo EMYCOM PLAY.\n\nDigite a opção desejada.\n\n1- PARA FALAR COM NOSSO SUPORTE.\n\n2- PARA FAZER UM TESTE EM NOSSOS SERVIDORES.\n\n3- PARA CONHECER NOSSOS APPS PROPRIOS E PARCEIROS.\n\n4- PARA RENOVAR SUA ASSINATURA.",
+      "modo": "comeca_com",
+      "ativo": true
+    },
+    "ola": {
+      "resposta": "Seja Bem Vindo ao Grupo EMYCOM PLAY.\n\nDigite a opção desejada.\n\n1- PARA FALAR COM NOSSO SUPORTE.\n\n2- PARA FAZER UM TESTE EM NOSSOS SERVIDORES.\n\n3- PARA CONHECER NOSSOS APPS PROPRIOS E PARCEIROS.\n\n4- PARA RENOVAR SUA ASSINATURA.",
+      "ativo": true,
+      "modo": "escrita_exata"
+    },
+    "bom dia": {
+      "resposta": "Seja Bem Vindo ao Grupo EMYCOM PLAY.\n\nDigite a opção desejada.\n\n1- PARA FALAR COM NOSSO SUPORTE.\n\n2- PARA FAZER UM TESTE EM NOSSOS SERVIDORES.\n\n3- PARA CONHECER NOSSOS APPS PROPRIOS E PARCEIROS.\n\n4- PARA RENOVAR SUA ASSINATURA.",
+      "modo": "comeca_com",
+      "ativo": true
+    },
+    "boa tarde": {
+      "resposta": "Seja Bem Vindo ao Grupo EMYCOM PLAY.\n\nDigite a opção desejada.\n\n1- PARA FALAR COM NOSSO SUPORTE.\n\n2- PARA FAZER UM TESTE EM NOSSOS SERVIDORES.\n\n3- PARA CONHECER NOSSOS APPS PROPRIOS E PARCEIROS.\n\n4- PARA RENOVAR SUA ASSINATURA.",
+      "modo": "comeca_com",
+      "ativo": true
+    },
+    "boa noite": {
+      "resposta": "Seja Bem Vindo ao Grupo EMYCOM PLAY.\n\nDigite a opção desejada.\n\n1- PARA FALAR COM NOSSO SUPORTE.\n\n2- PARA FAZER UM TESTE EM NOSSOS SERVIDORES.\n\n3- PARA CONHECER NOSSOS APPS PROPRIOS E PARCEIROS.\n\n4- PARA RENOVAR SUA ASSINATURA.",
+      "modo": "comeca_com",
+      "ativo": true
+    },
+    "tudo bem": {
+      "resposta": "Seja Bem Vindo ao Grupo EMYCOM PLAY.\n\nDigite a opção desejada.\n\n1- PARA FALAR COM NOSSO SUPORTE.\n\n2- PARA FAZER UM TESTE EM NOSSOS SERVIDORES.\n\n3- PARA CONHECER NOSSOS APPS PROPRIOS E PARCEIROS.\n\n4- PARA RENOVAR SUA ASSINATURA.",
+      "modo": "comeca_com",
+      "ativo": true
+    },
+    "Quero saber mais": {
+      "resposta": "Seja Bem Vindo ao Grupo EMYCOM PLAY.\n\nDigite a opção desejada.\n\n1- PARA FALAR COM NOSSO SUPORTE.\n\n2- PARA FAZER UM TESTE EM NOSSOS SERVIDORES.\n\n3- PARA CONHECER NOSSOS APPS PROPRIOS E PARCEIROS.\n\n4- PARA RENOVAR SUA ASSINATURA.",
+      "ativo": true,
+      "modo": "contem"
+    },
+    "m2": {
+      "resposta": "🧪 *TESTE M2 - {data}*\n\n✅ Acesso gerado!\n📱 Número: {numero}\n🔑 Código: M2-{hora}\n\n⏱️ Expira em: {expira}",
+      "ativo": true,
+      "modo": "escrita_exata"
+    }
+  },
+  "testes": {
+    "max_canais": 100,
+    "timeout": 10,
+    "mensagem_inicio": "🔍 Analisando sua lista... aguarde.",
+    "mensagem_sucesso": "✅ {online}/{total} canais online - {taxa}%"
+  },
+  "bloqueio": {
+    "dias": 1,
+    "ativo": true,
+    "mensagem": "🔒 *ACESSO BLOQUEADO*\n\nEste número já realizou um teste recentemente.\n\n📅 Próximo teste disponível: {data}"
+  }
+}

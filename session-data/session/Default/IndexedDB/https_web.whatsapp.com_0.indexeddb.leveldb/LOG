@@ -1,0 +1,18 @@
+2026/02/14-23:09:55.330 3dac Reusing MANIFEST C:\EmycomBot\session-data\session\Default\IndexedDB\https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2026/02/14-23:09:55.330 3dac Recovering log #68
+2026/02/14-23:09:55.359 3dac Reusing old log C:\EmycomBot\session-data\session\Default\IndexedDB\https_web.whatsapp.com_0.indexeddb.leveldb/000068.log 
+2026/02/14-23:10:16.213 3dac Level-0 table #76: started
+2026/02/14-23:10:16.237 3dac Level-0 table #76: 1217479 bytes OK
+2026/02/14-23:10:16.239 3dac Delete type=0 #68
+2026/02/14-23:10:36.726 3fb0 Compacting 1@1 + 4@2 files
+2026/02/14-23:10:36.806 3fb0 Generated table #77@1: 47656 keys, 2217488 bytes
+2026/02/14-23:10:36.836 3fb0 Generated table #78@1: 1744 keys, 2147592 bytes
+2026/02/14-23:10:36.903 3fb0 Generated table #79@1: 29934 keys, 2214758 bytes
+2026/02/14-23:10:36.940 3fb0 Generated table #80@1: 52435 keys, 1251903 bytes
+2026/02/14-23:10:36.940 3fb0 Compacted 1@1 + 4@2 files => 7831741 bytes
+2026/02/14-23:10:36.941 3fb0 compacted to: files[ 0 0 4 0 0 0 0 ]
+2026/02/14-23:10:36.942 3fb0 Delete type=2 #70
+2026/02/14-23:10:36.942 3fb0 Delete type=2 #71
+2026/02/14-23:10:36.942 3fb0 Delete type=2 #72
+2026/02/14-23:10:36.942 3fb0 Delete type=2 #73
+2026/02/14-23:10:36.942 3fb0 Delete type=2 #76

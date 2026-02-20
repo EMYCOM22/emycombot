@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Configurar Bot</title>
+    <style>
+        body { font-family: Arial; padding: 30px; background: #f0f2f5; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 15px; }
+        .command-item { background: #f8f9fa; padding: 15px; margin: 10px 0; border-left: 4px solid #4361ee; }
+        .btn { padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer; margin: 5px; }
+        .btn-primary { background: #4361ee; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-danger { background: #dc3545; color: white; }
+        input, textarea { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 5px; }
+        textarea { min-height: 100px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⚙️ Configurar Bot WhatsApp</h1>
+        <div id="status" style="margin-bottom: 20px;">🔴 Bot Offline</div>
+        
+        <div style="margin-bottom: 20px;">
+            <button class="btn btn-primary" onclick="mostrarAba('comandos')">📋 Comandos</button>
+            <button class="btn" onclick="mostrarAba('testes')">🧪 Testes</button>
+        </div>
+
+        <!-- ABA COMANDOS -->
+        <div id="aba-comandos">
+            <div style="display: flex; justify-content: space-between;">
+                <h3>Comandos</h3>
+                <button class="btn btn-success" onclick="novoComando()">+ Novo</button>
+            </div>
+            <div id="lista-comandos"></div>
+        </div>
+
+        <!-- ABA TESTES -->
+        <div id="aba-testes" style="display: none;">
+            <h3>Configurações de Teste</h3>
+            <p>Em breve...</p>
+        </div>
+
+        <!-- EDITOR -->
+        <div id="editor" style="display: none; margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 10px;">
+            <h3 id="editor-titulo">Novo Comando</h3>
+            <input type="text" id="cmd-nome" placeholder="Nome do comando (ex: oi, menu)">
+            <textarea id="cmd-resposta" placeholder="Resposta do bot"></textarea>
+            <label>
+                <input type="checkbox" id="cmd-ativo" checked> Comando ativo
+            </label>
+            <br><br>
+            <button class="btn btn-success" onclick="salvarComando()">Salvar</button>
+            <button class="btn btn-danger" onclick="cancelar()">Cancelar</button>
+        </div>
+    </div>
+
+    <script>
+        let modoEdicao = false;
+        let comandoEditando = null;
+
+        // Carregar comandos
+        async function carregarComandos() {
+            const res = await fetch('/api/bot/comandos');
+            const comandos = await res.json();
+            
+            let html = '';
+            for (let nome in comandos) {
+                html += `
+                    <div class="command-item">
+                        <div style="display: flex; justify-content: space-between;">
+                            <strong>/${nome}</strong>
+                            <div>
+                                <button class="btn btn-primary" onclick="editarComando('${nome}')">✏️ Editar</button>
+                                <button class="btn btn-danger" onclick="deletarComando('${nome}')">🗑️ Excluir</button>
+                            </div>
+                        </div>
+                        <div style="margin-top: 10px; color: #666; white-space: pre-wrap;">${comandos[nome].resposta}</div>
+                        <div style="margin-top: 10px;">
+                            <span style="background: ${comandos[nome].ativo ? '#d4edda' : '#f8d7da'}; 
+                                       color: ${comandos[nome].ativo ? '#155724' : '#721c24'};
+                                       padding: 3px 10px; border-radius: 3px;">
+                                ${comandos[nome].ativo ? '✅ Ativo' : '❌ Inativo'}
+                            </span>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            if (Object.keys(comandos).length === 0) {
+                html = '<p style="color: #666; padding: 20px;">Nenhum comando cadastrado.</p>';
+            }
+            
+            document.getElementById('lista-comandos').innerHTML = html;
+        }
+
+        // Editar comando
+        async function editarComando(nome) {
+            const res = await fetch(`/api/bot/comandos/${nome}`);
+            const cmd = await res.json();
+            
+            modoEdicao = true;
+            comandoEditando = nome;
+            
+            document.getElementById('editor').style.display = 'block';
+            document.getElementById('editor-titulo').innerHTML = `Editando: ${nome}`;
+            document.getElementById('cmd-nome').value = nome;
+            document.getElementById('cmd-nome').readOnly = true;
+            document.getElementById('cmd-resposta').value = cmd.resposta || '';
+            document.getElementById('cmd-ativo').checked = cmd.ativo !== false;
+        }
+
+        // Novo comando
+        function novoComando() {
+            modoEdicao = false;
+            comandoEditando = null;
+            
+            document.getElementById('editor').style.display = 'block';
+            document.getElementById('editor-titulo').innerHTML = 'Novo Comando';
+            document.getElementById('cmd-nome').value = '';
+            document.getElementById('cmd-nome').readOnly = false;
+            document.getElementById('cmd-resposta').value = '';
+            document.getElementById('cmd-ativo').checked = true;
+        }
+
+        // Salvar comando
+        async function salvarComando() {
+            const nome = document.getElementById('cmd-nome').value.trim();
+            const resposta = document.getElementById('cmd-resposta').value.trim();
+            const ativo = document.getElementById('cmd-ativo').checked;
+            
+            if (!nome || !resposta) {
+                alert('Preencha todos os campos!');
+                return;
+            }
+            
+            const res = await fetch(`/api/bot/comandos/${nome}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ resposta, ativo })
+            });
+            
+            if (res.ok) {
+                alert('Comando salvo com sucesso!');
+                document.getElementById('editor').style.display = 'none';
+                carregarComandos();
+            }
+        }
+
+        // Deletar comando
+        async function deletarComando(nome) {
+            if (confirm(`Deletar comando "${nome}"?`)) {
+                await fetch(`/api/bot/comandos/${nome}`, { method: 'DELETE' });
+                carregarComandos();
+            }
+        }
+
+        function cancelar() {
+            document.getElementById('editor').style.display = 'none';
+        }
+
+        function mostrarAba(aba) {
+            document.getElementById('aba-comandos').style.display = aba === 'comandos' ? 'block' : 'none';
+            document.getElementById('aba-testes').style.display = aba === 'testes' ? 'block' : 'none';
+        }
+
+        // Carregar status do bot
+        async function carregarStatus() {
+            const res = await fetch('/api/bot/status');
+            const status = await res.json();
+            document.getElementById('status').innerHTML = status.online ? '🟢 Bot Online' : '🔴 Bot Offline';
+        }
+
+        // Inicializar
+        carregarComandos();
+        carregarStatus();
+        setInterval(carregarStatus, 5000);
+    </script>
+</body>
+</html>

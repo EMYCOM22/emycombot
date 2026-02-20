@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Configurar Bot - Emycom Play</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 30px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .status-bar {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .online { background: #d4edda; color: #155724; padding: 8px 15px; border-radius: 20px; }
+        .offline { background: #f8d7da; color: #721c24; padding: 8px 15px; border-radius: 20px; }
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        .tab {
+            padding: 12px 25px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+        .tab.active {
+            background: #667eea;
+            color: white;
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        
+        .card {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #555;
+        }
+        .form-control {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+        textarea.form-control { min-height: 120px; }
+        .btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 1rem;
+        }
+        .btn-success { background: #28a745; color: white; }
+        .btn-danger { background: #dc3545; color: white; }
+        .btn-primary { background: #667eea; color: white; }
+        
+        .command-item {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            border-left: 4px solid #667eea;
+        }
+        .command-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .command-name {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #333;
+        }
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            margin-right: 5px;
+        }
+        .badge-modo { background: #e3f2fd; color: #0d47a1; }
+        .badge-ativo { background: #d4edda; color: #155724; }
+        .badge-inativo { background: #f8d7da; color: #721c24; }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        th { background: #f8f9fa; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⚙️ Configurar Bot WhatsApp</h1>
+
+        <div class="status-bar">
+            <span>Status do Bot:</span>
+            <span id="botStatus" class="offline">🔴 Offline</span>
+        </div>
+
+        <div class="tabs">
+            <div class="tab active" onclick="openTab('comandos')">📋 Comandos</div>
+            <div class="tab" onclick="openTab('testes')">🧪 Testes IPTV</div>
+            <div class="tab" onclick="openTab('bloqueio')">🔒 Bloqueio</div>
+        </div>
+
+        <!-- ===== ABA COMANDOS ===== -->
+        <div id="tab-comandos" class="tab-content active">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+                <h2>Comandos do Bot</h2>
+                <button class="btn btn-success" onclick="novoComando()">+ Novo Comando</button>
+            </div>
+
+            <div id="editorComando" class="card" style="display: none;">
+                <h3 id="editorTitulo">➕ Novo Comando</h3>
+                <input type="text" id="cmdNome" class="form-control" placeholder="Nome do comando">
+                <textarea id="cmdResposta" class="form-control" placeholder="Resposta do bot"></textarea>
+                
+                <div class="form-group">
+                    <label>Modo de correspondência:</label>
+                    <select id="cmdModo" class="form-control">
+                        <option value="escrita_exata">🔵 Escrita exata</option>
+                        <option value="contem">🟢 Contém a palavra</option>
+                        <option value="comeca_com">🟡 Começa com</option>
+                        <option value="termina_com">🟠 Termina com</option>
+                    </select>
+                </div>
+                
+                <div style="margin: 15px 0;">
+                    <label>
+                        <input type="checkbox" id="cmdAtivo" checked> Comando ativo
+                    </label>
+                </div>
+                
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn btn-success" onclick="salvarComando()">💾 Salvar</button>
+                    <button class="btn btn-danger" onclick="cancelarEdicao()">✖ Cancelar</button>
+                </div>
+            </div>
+
+            <div id="listaComandos" class="commands-list">
+                Carregando...
+            </div>
+        </div>
+
+        <!-- ===== ABA TESTES ===== -->
+        <div id="tab-testes" class="tab-content">
+            <h2>Configurações de Teste IPTV</h2>
+            <div class="card">
+                <div class="form-group">
+                    <label>Máximo de canais para testar:</label>
+                    <input type="number" id="testeMaxCanais" class="form-control" value="25" min="5" max="100">
+                </div>
+                <div class="form-group">
+                    <label>Timeout por canal (segundos):</label>
+                    <input type="number" id="testeTimeout" class="form-control" value="10" min="3" max="30">
+                </div>
+                <div class="form-group">
+                    <label>Mensagem de início:</label>
+                    <textarea id="testeMsgInicio" class="form-control">🔍 Analisando sua lista... aguarde.</textarea>
+                </div>
+                <div class="form-group">
+                    <label>Mensagem de sucesso:</label>
+                    <textarea id="testeMsgSucesso" class="form-control">✅ {online}/{total} canais online - {taxa}%</textarea>
+                    <small>Use {online}, {total}, {taxa} como variáveis</small>
+                </div>
+                <button class="btn btn-primary" onclick="salvarTestes()">💾 Salvar Configurações</button>
+            </div>
+        </div>
+
+        <!-- ===== ABA BLOQUEIO ===== -->
+        <div id="tab-bloqueio" class="tab-content">
+            <h2>Configuração de Bloqueio</h2>
+            
+            <div class="card">
+                <h3>Configurações Gerais</h3>
+                <div class="form-group">
+                    <label>Dias de bloqueio:</label>
+                    <input type="number" id="bloqueioDias" class="form-control" value="15" min="1" max="365">
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="bloqueioAtivo" checked> Bloqueio ativo
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label>Mensagem de bloqueio:</label>
+                    <textarea id="bloqueioMensagem" class="form-control">🔒 *ACESSO BLOQUEADO*\n\nEste número já realizou um teste recentemente.\n\n📅 Próximo teste disponível: {data}</textarea>
+                    <small>Use {data} para mostrar a data de liberação</small>
+                </div>
+                <button class="btn btn-primary" onclick="salvarBloqueio()">💾 Salvar Configurações</button>
+            </div>
+
+            <div class="card">
+                <h3>Números Bloqueados</h3>
+                <div id="listaBloqueios">
+                    Carregando...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ========== VARIÁVEIS ==========
+        let configAtual = { comandos: {} };
+
+        // ========== FUNÇÕES DE ABA ==========
+        function openTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            
+            if (tab === 'comandos') {
+                document.querySelectorAll('.tab')[0].classList.add('active');
+                document.getElementById('tab-comandos').classList.add('active');
+                carregarComandos();
+            } else if (tab === 'testes') {
+                document.querySelectorAll('.tab')[1].classList.add('active');
+                document.getElementById('tab-testes').classList.add('active');
+                carregarTestes();
+            } else if (tab === 'bloqueio') {
+                document.querySelectorAll('.tab')[2].classList.add('active');
+                document.getElementById('tab-bloqueio').classList.add('active');
+                carregarConfigBloqueio();
+                carregarListaBloqueios();
+            }
+        }
+
+        // ========== FUNÇÕES DE COMANDOS ==========
+        async function carregarComandos() {
+            try {
+                const res = await fetch('/api/bot/comandos');
+                configAtual.comandos = await res.json();
+                
+                let html = '';
+                for (let [nome, dados] of Object.entries(configAtual.comandos)) {
+                    const modoTexto = {
+                        'escrita_exata': '🔵 Exata',
+                        'contem': '🟢 Contém',
+                        'comeca_com': '🟡 Começa',
+                        'termina_com': '🟠 Termina'
+                    }[dados.modo] || '🔵 Exata';
+                    
+                    html += `
+                        <div class="command-item">
+                            <div class="command-header">
+                                <span class="command-name">/${nome}</span>
+                                <div>
+                                    <button class="btn btn-primary" onclick="editarComando('${nome}')">✏️ Editar</button>
+                                    <button class="btn btn-danger" onclick="deletarComando('${nome}')">🗑️ Excluir</button>
+                                </div>
+                            </div>
+                            <div style="margin: 10px 0;">
+                                <span class="badge badge-modo">${modoTexto}</span>
+                                <span class="badge ${dados.ativo ? 'badge-ativo' : 'badge-inativo'}">
+                                    ${dados.ativo ? '✅ Ativo' : '❌ Inativo'}
+                                </span>
+                            </div>
+                            <div style="color: #666;">${dados.resposta.substring(0, 100)}...</div>
+                        </div>
+                    `;
+                }
+                
+                if (Object.keys(configAtual.comandos).length === 0) {
+                    html = '<p style="color: #666;">Nenhum comando cadastrado.</p>';
+                }
+                
+                document.getElementById('listaComandos').innerHTML = html;
+                
+            } catch (error) {
+                document.getElementById('listaComandos').innerHTML = '<p style="color: #dc3545;">Erro ao carregar</p>';
+            }
+        }
+
+        async function editarComando(nome) {
+            const res = await fetch(`/api/bot/comandos/${nome}`);
+            const cmd = await res.json();
+            
+            document.getElementById('editorComando').style.display = 'block';
+            document.getElementById('editorTitulo').innerHTML = `✏️ Editando: ${nome}`;
+            document.getElementById('cmdNome').value = nome;
+            document.getElementById('cmdNome').readOnly = true;
+            document.getElementById('cmdResposta').value = cmd.resposta || '';
+            document.getElementById('cmdModo').value = cmd.modo || 'escrita_exata';
+            document.getElementById('cmdAtivo').checked = cmd.ativo !== false;
+            
+            document.getElementById('editorComando').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function novoComando() {
+            document.getElementById('editorComando').style.display = 'block';
+            document.getElementById('editorTitulo').innerHTML = '➕ Novo Comando';
+            document.getElementById('cmdNome').value = '';
+            document.getElementById('cmdNome').readOnly = false;
+            document.getElementById('cmdResposta').value = '';
+            document.getElementById('cmdModo').value = 'escrita_exata';
+            document.getElementById('cmdAtivo').checked = true;
+            
+            document.getElementById('editorComando').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        async function salvarComando() {
+            const nome = document.getElementById('cmdNome').value.trim();
+            const resposta = document.getElementById('cmdResposta').value.trim();
+            const modo = document.getElementById('cmdModo').value;
+            const ativo = document.getElementById('cmdAtivo').checked;
+            
+            if (!nome || !resposta) {
+                alert('Preencha todos os campos!');
+                return;
+            }
+            
+            const res = await fetch(`/api/bot/comandos/${nome}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ resposta, modo, ativo })
+            });
+            
+            if (res.ok) {
+                alert('✅ Comando salvo!');
+                document.getElementById('editorComando').style.display = 'none';
+                carregarComandos();
+            }
+        }
+
+        async function deletarComando(nome) {
+            if (confirm(`Deletar ${nome}?`)) {
+                await fetch(`/api/bot/comandos/${nome}`, { method: 'DELETE' });
+                carregarComandos();
+            }
+        }
+
+        function cancelarEdicao() {
+            document.getElementById('editorComando').style.display = 'none';
+        }
+
+        // ========== FUNÇÕES DE TESTES ==========
+        async function carregarTestes() {
+            try {
+                const res = await fetch('/api/testes/config');
+                const testes = await res.json();
+                
+                document.getElementById('testeMaxCanais').value = testes.max_canais || 25;
+                document.getElementById('testeTimeout').value = testes.timeout || 10;
+                document.getElementById('testeMsgInicio').value = testes.mensagem_inicio || '🔍 Analisando...';
+                document.getElementById('testeMsgSucesso').value = testes.mensagem_sucesso || '✅ {online}/{total} canais online - {taxa}%';
+                
+            } catch (error) {
+                console.error('Erro ao carregar testes');
+            }
+        }
+
+        async function salvarTestes() {
+            const config = {
+                max_canais: parseInt(document.getElementById('testeMaxCanais').value),
+                timeout: parseInt(document.getElementById('testeTimeout').value),
+                mensagem_inicio: document.getElementById('testeMsgInicio').value,
+                mensagem_sucesso: document.getElementById('testeMsgSucesso').value
+            };
+            
+            const res = await fetch('/api/testes/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(config)
+            });
+            
+            if (res.ok) {
+                alert('✅ Configurações salvas!');
+            }
+        }
+
+        // ========== FUNÇÕES DE BLOQUEIO ==========
+        async function carregarConfigBloqueio() {
+            try {
+                const res = await fetch('/api/bloqueio/config');
+                const config = await res.json();
+                
+                document.getElementById('bloqueioDias').value = config.dias || 15;
+                document.getElementById('bloqueioAtivo').checked = config.ativo !== false;
+                document.getElementById('bloqueioMensagem').value = config.mensagem || '';
+                
+            } catch (error) {
+                console.error('Erro ao carregar bloqueio');
+            }
+        }
+
+        async function salvarBloqueio() {
+            const config = {
+                dias: parseInt(document.getElementById('bloqueioDias').value),
+                ativo: document.getElementById('bloqueioAtivo').checked,
+                mensagem: document.getElementById('bloqueioMensagem').value
+            };
+            
+            const res = await fetch('/api/bloqueio/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(config)
+            });
+            
+            if (res.ok) {
+                alert('✅ Configurações de bloqueio salvas!');
+            }
+        }
+
+        async function carregarListaBloqueios() {
+            try {
+                const res = await fetch('/api/bloqueio/lista');
+                const bloqueios = await res.json();
+                
+                if (bloqueios.length === 0) {
+                    document.getElementById('listaBloqueios').innerHTML = '<p>Nenhum número bloqueado.</p>';
+                    return;
+                }
+                
+                let html = '<table><tr><th>Número</th><th>Expira em</th><th>Dias</th><th>Ação</th></tr>';
+                
+                bloqueios.forEach(b => {
+                    html += `
+                        <tr>
+                            <td>${b.numero}</td>
+                            <td>${b.dataExpiracao}</td>
+                            <td>${b.diasRestantes} dias</td>
+                            <td>
+                                <button class="btn btn-danger" onclick="removerBloqueio('${b.numero}')" style="padding: 5px 10px;">Remover</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+                
+                html += '</table>';
+                document.getElementById('listaBloqueios').innerHTML = html;
+                
+            } catch (error) {
+                document.getElementById('listaBloqueios').innerHTML = '<p>Erro ao carregar</p>';
+            }
+        }
+
+        async function removerBloqueio(numero) {
+            if (confirm(`Remover bloqueio de ${numero}?`)) {
+                await fetch(`/api/bloqueio/${numero}`, { method: 'DELETE' });
+                carregarListaBloqueios();
+            }
+        }
+
+        // ========== STATUS DO BOT ==========
+        async function carregarStatus() {
+            try {
+                const res = await fetch('/api/bot/status');
+                const status = await res.json();
+                
+                const el = document.getElementById('botStatus');
+                if (status.online) {
+                    el.innerHTML = '🟢 Online';
+                    el.className = 'online';
+                } else {
+                    el.innerHTML = '🔴 Offline';
+                    el.className = 'offline';
+                }
+            } catch (error) {
+                console.error('Erro ao carregar status');
+            }
+        }
+
+        // ========== INICIALIZAR ==========
+        document.addEventListener('DOMContentLoaded', () => {
+            carregarComandos();
+            carregarStatus();
+            setInterval(carregarStatus, 5000);
+        });
+    </script>
+</body>
+</html>
