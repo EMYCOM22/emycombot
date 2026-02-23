@@ -3,5 +3,3 @@ node_modules/
 .wwebjs_cache/
 bloqueios.json
 .env
-.DS_Store
-*.log

@@ -2,123 +2,159 @@ const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 const fs = require('fs');
 const axios = require('axios');
-const express = require('express');
-const app = express();
-const PORT = process.env.PORT || 3000;
+const path = require('path');
 
-console.log('🔄 Iniciando bot com IA Híbrida em produção...');
+console.log('🔄 Iniciando bot com Gemini AI...');
 
-// ========== ARQUIVOS ==========
+// ========== CONFIGURAÇÕES ==========
 const CONFIG_FILE = './bot-config.json';
 const BLOQUEIOS_FILE = './bloqueios.json';
 
-// Carregar configurações
-let config = { comandos: {}, testes: {}, bloqueio: { dias: 15, ativo: true } };
-let bloqueios = {};
+// 🔑 COLE SUA CHAVE AQUI
+const GEMINI_API_KEY = 'AIzaSyBzXx...'; // 👈 COLE SUA CHAVE AQUI
 
-try {
-    config = JSON.parse(fs.readFileSync(CONFIG_FILE));
-    console.log('✅ Configurações carregadas');
-} catch (e) {
-    console.log('⚠️ Usando configuração padrão');
-}
-
-try {
-    bloqueios = JSON.parse(fs.readFileSync(BLOQUEIOS_FILE));
-    console.log('🔒 Bloqueios carregados');
-} catch (e) {
-    fs.writeFileSync(BLOQUEIOS_FILE, JSON.stringify({}));
-}
-
-const client = new Client({
-    authStrategy: new LocalAuth({
-        dataPath: './.wwebjs_auth' // Persistir sessão
-    }),
-    puppeteer: {
-        args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-            '--disable-accelerated-2d-canvas',
-            '--no-first-run',
-            '--no-zygote',
-            '--single-process',
-            '--disable-gpu'
-        ]
-    }
-});
-
-// ========== SERVIDOR WEB (para manter o Render ativo) ==========
-app.get('/', (req, res) => {
-    res.send('✅ Bot Emycom Play está rodando!');
-});
-
-app.get('/health', (req, res) => {
-    res.json({ 
-        status: 'online', 
-        timestamp: new Date().toISOString(),
-        bot: client.info ? 'conectado' : 'conectando'
-    });
-});
-
-app.listen(PORT, () => {
-    console.log(`🌐 Servidor web rodando na porta ${PORT}`);
-});
-
-// ========== CONFIGURAÇÃO DA IA ==========
-const MODELO_IA = 'gemma3:1b';
-const IA_ATIVADA = false; // Desativada em produção até configurar Ollama
-const HISTORICO_POR_NUMERO = new Map();
-
-// Palavras que indicam desejo de ir para o menu principal
-const PALAVRAS_MENU = [
-    'testar', 'conhecer mais', 'saber mais', 'quero saber', 'como funciona',
-    'gostaria de saber', 'me explica', 'o que é', 'como faz', 'quero testar',
-    'experimentar', 'demonstração', 'quero conhecer', 'falar sobre', 'info',
-    'informações', 'planos', 'preços', 'valores', 'quanto custa', 'tabela',
-    'promoção', 'ofertas', 'serviços', 'produtos', 'catálogo', 'novidades'
+// ========== CONTROLE DE INTERVENÇÃO HUMANA ==========
+const ADMIN_NUMBERS = [
+    '558894413934@c.us',  // 👈 SEU NÚMERO
 ];
 
-// Palavras que indicam desejo de aprender sobre IPTV
-const PALAVRAS_APRENDER = [
-    'como funciona iptv', 'o que é iptv', 'explicação iptv', 'tutorial iptv',
-    'aprender iptv', 'guia iptv', 'como instalar iptv', 'como usar iptv',
-    'iptv funciona', 'entender iptv', 'iptv explicado', 'iptv para iniciantes',
-    'como assistir iptv', 'configurar iptv', 'aplicativo iptv', 'player iptv'
-];
+const CHATS_COM_HUMANO = new Set();
 
-// ========== FUNÇÃO PARA BUSCAR CONTEÚDO SOBRE IPTV ==========
-async function buscarConteudoIPTV(termo) {
-    // Sem Ollama em produção, retorna fallback educacional
-    return `📚 *O QUE É IPTV?*\n\nIPTV é uma tecnologia que permite assistir TV pela internet, usando aplicativos em vez de antenas ou cabos.\n\n⚙️ *COMO FUNCIONA?*\n\nVocê precisa de um aplicativo e uma lista de canais (playlist). O app se conecta à lista e transmite os canais ao vivo.\n\n📱 *O QUE VOCÊ PRECISA?*\n• Internet de qualidade\n• Um dispositivo (TV, celular, tablet)\n• Um aplicativo IPTV\n• Uma lista de canais\n\n🎥 *COMO APRENDER MAIS:*\n• Pesquise no YouTube: "IPTV para iniciantes"\n• Pesquise: "Como configurar IPTV"\n• Pesquise: "Melhor app IPTV"\n\n🌐 *DICAS DE PESQUISA:*\n• Google: "O que é IPTV guia completo"\n• Google: "IPTV como funciona tutorial"`;
+// ========== FUNÇÕES DE CONTROLE ==========
+function isAdmin(numero) {
+    const numeroLimpo = numero.split('@')[0];
+    return ADMIN_NUMBERS.includes(numero) || 
+           ADMIN_NUMBERS.includes(numeroLimpo + '@c.us') ||
+           ADMIN_NUMBERS.includes(numeroLimpo);
 }
 
-// Função para responder com IA (desativada em produção)
-async function responderComIA(numero, mensagem) {
-    const mensagemLower = mensagem.toLowerCase();
-    
-    // Verificar se quer aprender sobre IPTV
-    for (let termo of PALAVRAS_APRENDER) {
-        if (mensagemLower.includes(termo)) {
-            console.log(`📚 Cliente quer aprender sobre IPTV`);
-            return await buscarConteudoIPTV(termo);
+function humanoAssumiuChat(chatId) {
+    console.log(`👤 Humano assumiu o chat: ${chatId}`);
+    CHATS_COM_HUMANO.add(chatId);
+}
+
+function iaPodeResponder(chatId) {
+    if (chatId.endsWith('@g.us')) return false;
+    if (chatId === 'status@broadcast') return false;
+    return !CHATS_COM_HUMANO.has(chatId);
+}
+
+// ========== FUNÇÃO PARA CHAMAR GEMINI AI ==========
+async function perguntarGemini(prompt, historico = []) {
+    try {
+        console.log('🤔 Consultando Gemini AI...');
+        
+        const messages = [
+            {
+                role: 'user',
+                parts: [{ text: prompt }]
+            }
+        ];
+        
+        const response = await axios.post(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`,
+            {
+                contents: messages,
+                generationConfig: {
+                    temperature: 0.7,
+                    maxOutputTokens: 300,
+                }
+            },
+            {
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+        
+        if (response.data.candidates && response.data.candidates[0]) {
+            return response.data.candidates[0].content.parts[0].text;
         }
+        
+        return null;
+        
+    } catch (error) {
+        console.error('❌ Erro Gemini:', error.response?.data || error.message);
+        return null;
     }
-    
-    // Verificar se quer ir para o menu principal
-    const querMenu = PALAVRAS_MENU.some(palavra => mensagemLower.includes(palavra));
-    
-    if (querMenu) {
-        console.log(`🔴 Cliente quer informações comerciais - redirecionando para menu`);
-        return `📋 *MENU PRINCIPAL*\n\n` +
-               `Escolha uma opção digitando o número correspondente:\n\n` +
-               `1️⃣ *FALAR COM SUPORTE*\n` +
-               `2️⃣ *TESTAR NOSSOS SERVIDORES*\n` +
-               `3️⃣ *CONHECER APPS E PARCEIROS*\n` +
-               `4️⃣ *RENOVAR ASSINATURA*`;
+}
+
+// ========== FUNÇÃO PRINCIPAL DA IA ==========
+async function responderComIA(numero, mensagem) {
+    try {
+        const mensagemLower = mensagem.toLowerCase();
+        
+        // ===== DETECTAR OPÇÃO ESCOLHIDA =====
+        if (mensagemLower === '1') {
+            return "Claro! Vou chamar nosso suporte humano para te atender 😊\n\nEnquanto isso, quer deixar alguma mensagem para o atendente?";
+        }
+        
+        if (mensagemLower === '2') {
+            return "Ótima escolha! 🎯\n\nNosso teste é gratuito por 1 hora com mais de 15.000 canais.\n\nQuer testar agora? É só digitar *M2*";
+        }
+        
+        if (mensagemLower === '3') {
+            return "Temos apps incríveis! 📱\n\nFuncionam em Smart TV, celular e computador.\n\nQual dispositivo você usa? (TV, celular, tablet)";
+        }
+        
+        if (mensagemLower === '4') {
+            return "Vamos renovar? 💳\n\nAceitamos PIX (mais rápido), transferência e cartão.\n\nQual forma de pagamento prefere?";
+        }
+        
+        // ===== USAR GEMINI PARA RESPOSTAS INTELIGENTES =====
+        const prompt = `Você é um assistente de vendas da EMYCOM PLAY, empresa de IPTV. 
+        Seja educado, útil e responda em português do Brasil.
+        Cliente disse: "${mensagem}"
+        
+        Regras:
+        - Se for saudação, seja caloroso
+        - Se perguntar sobre preços, diga que temos a partir de R$25
+        - Se perguntar sobre IPTV, explique de forma simples
+        - Sempre termine com uma pergunta para engajar
+        - Use emojis com moderação 😊
+        
+        Responda de forma natural e conversacional.`;
+        
+        const resposta = await perguntarGemini(prompt);
+        
+        if (resposta) {
+            return resposta;
+        }
+        
+        return "Entendi! 😊 Como posso ajudar você hoje? Você pode digitar 1, 2, 3 ou 4 para opções, ou M2 para teste grátis.";
+        
+    } catch (error) {
+        console.error('❌ Erro na IA:', error.message);
+        return "Desculpe, tive um probleminha. Pode repetir? 😊";
     }
-    
-    return null;
+}
+
+// ========== FUNÇÃO PARA PUBLICAR IMAGENS NO STATUS ==========
+async function publicarImagemAleatoria() {
+    try {
+        const pastaImagens = './imagens';
+        
+        if (!fs.existsSync(pastaImagens)) {
+            fs.mkdirSync(pastaImagens);
+            return;
+        }
+        
+        const imagens = fs.readdirSync(pastaImagens)
+            .filter(file => file.endsWith('.jpg') || file.endsWith('.jpeg') || file.endsWith('.png'));
+        
+        if (imagens.length === 0) return;
+        
+        const imagemEscolhida = imagens[Math.floor(Math.random() * imagens.length)];
+        const caminhoCompleto = path.join(pastaImagens, imagemEscolhida);
+        
+        const media = MessageMedia.fromFilePath(caminhoCompleto);
+        await client.sendMessage('status@broadcast', media);
+        
+        console.log(`✅ Imagem publicada: ${imagemEscolhida}`);
+        
+    } catch (error) {
+        console.error('❌ Erro ao publicar imagem:', error);
+    }
 }
 
 // ========== FUNÇÕES DE BLOQUEIO ==========
@@ -132,7 +168,6 @@ function estaBloqueado(numero) {
         fs.writeFileSync(BLOQUEIOS_FILE, JSON.stringify(bloqueios, null, 2));
         return false;
     }
-    
     return true;
 }
 
@@ -181,7 +216,7 @@ async function gerarTesteM2(numero) {
             
             let msgBloqueio = '';
             if (config.bloqueio?.ativo) {
-                msgBloqueio = `\n\n🔒 *BLOQUEIO*\nEste número está bloqueado por ${config.bloqueio.dias} dias (até ${dataExpira})`;
+                msgBloqueio = `\n\n🔒 Bloqueado por ${config.bloqueio.dias} dias (até ${dataExpira})`;
             }
             
             return `🧪 *TESTE M2*\n\n${msg}${msgBloqueio}`;
@@ -195,59 +230,49 @@ async function gerarTesteM2(numero) {
     }
 }
 
-// ========== FUNÇÃO DE CORRESPONDÊNCIA ==========
-function correspondeComando(textoUsuario, comandoNome) {
-    const texto = textoUsuario.toLowerCase().trim();
-    const comando = comandoNome.toLowerCase().trim();
-    const dados = config.comandos[comandoNome];
-    const modo = dados?.modo || 'escrita_exata';
-    
-    switch(modo) {
-        case 'escrita_exata': return texto === comando;
-        case 'contem': return texto.includes(comando);
-        case 'comeca_com': return texto.startsWith(comando);
-        case 'termina_com': return texto.endsWith(comando);
-        default: return texto === comando;
-    }
+// ========== CARREGAR CONFIGURAÇÕES ==========
+let config = { comandos: {}, testes: {}, bloqueio: { dias: 15, ativo: true } };
+let bloqueios = {};
+
+try {
+    config = JSON.parse(fs.readFileSync(CONFIG_FILE));
+    console.log('✅ Configurações carregadas');
+} catch (e) {
+    console.log('⚠️ Usando configuração padrão');
+    config = {
+        comandos: {
+            "m2": { "resposta": "🧪 Comando especial para teste", "ativo": true, "modo": "escrita_exata" }
+        },
+        testes: { max_canais: 25, timeout: 10, mensagem_inicio: "🔍 Analisando...", mensagem_sucesso: "✅ {online}/{total} canais online" },
+        bloqueio: { dias: 15, ativo: true, mensagem: "🔒 *BLOQUEADO*\n\nVocê já utilizou nosso teste recentemente.\n\n📅 Próximo teste disponível: {data}" }
+    };
 }
 
-// ========== FUNÇÃO PARA GERAR CONTEÚDO IPTV ==========
-async function gerarConteudoIPTV() {
-    const fallbacks = [
-        '📺 *EMYCOM PLAY* - Teste grátis por 24h! 🚀',
-        '🎬 Mais de 15.000 canais e VOD! Qualidade Full HD. 🔥',
-        '💎 Planos a partir de R$25,00. Aproveite!',
-        '⚡ Teste nossos servidores! Digite M2 e ganhe 1 hora.'
-    ];
-    return fallbacks[Math.floor(Math.random() * fallbacks.length)];
+try {
+    bloqueios = JSON.parse(fs.readFileSync(BLOQUEIOS_FILE));
+    console.log('🔒 Bloqueios carregados');
+} catch (e) {
+    fs.writeFileSync(BLOQUEIOS_FILE, JSON.stringify({}));
 }
 
-// ========== FUNÇÃO PARA PUBLICAR CONTEÚDO ==========
-async function publicarConteudoIPTV() {
-    try {
-        const texto = await gerarConteudoIPTV();
-        await client.sendMessage('status@broadcast', texto);
-        console.log(`✅ Conteúdo publicado: ${texto.substring(0, 50)}...`);
-    } catch (error) {
-        console.error('❌ Erro ao publicar:', error);
-    }
-}
+const client = new Client({
+    authStrategy: new LocalAuth(),
+    puppeteer: { args: ['--no-sandbox', '--disable-setuid-sandbox'] }
+});
 
-// ========== EVENTOS DO WHATSAPP ==========
+// ========== EVENTOS ==========
 client.on('qr', (qr) => {
     console.log('\n📱 ESCANEIE O QR CODE:\n');
     qrcode.generate(qr, { small: true });
-    console.log('\n⚠️ IMPORTANTE: Escaneie este QR CODE nos logs do Render!');
 });
 
 client.on('ready', async () => {
     console.log('✅ Bot conectado!', client.info.wid.user);
+    console.log('👤 Admin:', ADMIN_NUMBERS);
+    console.log('🤖 Gemini AI ativa!');
     
-    // Publicar conteúdo IPTV 10 segundos após conectar
-    setTimeout(publicarConteudoIPTV, 10000);
-    
-    // Agendar publicações a cada 6 horas
-    setInterval(publicarConteudoIPTV, 6 * 60 * 60 * 1000);
+    setTimeout(publicarImagemAleatoria, 10000);
+    setInterval(publicarImagemAleatoria, 4 * 60 * 60 * 1000);
 });
 
 client.on('auth_failure', (msg) => {
@@ -261,61 +286,51 @@ client.on('disconnected', async (reason) => {
 
 // ========== MENSAGENS ==========
 client.on('message', async (msg) => {
-    if (msg.fromMe || msg.from.endsWith('@g.us')) return;
+    if (msg.fromMe || msg.from.endsWith('@g.us') || msg.from === 'status@broadcast') return;
     
     const texto = msg.body.trim();
     const textoLower = texto.toLowerCase();
     const numero = msg.from;
     const numeroLimpo = numero.split('@')[0];
+    const chatId = msg.from;
     
     console.log(`📨 [${numeroLimpo}]: ${texto}`);
 
-    // Comandos numéricos
-    if (textoLower === '1' || textoLower === '2' || textoLower === '3' || textoLower === '4') {
-        const comando = config.comandos[textoLower];
-        if (comando && comando.ativo) {
-            await msg.reply(comando.resposta);
+    if (isAdmin(numero)) return;
+
+    if (CHATS_COM_HUMANO.has(chatId)) return;
+
+    // Comando M2
+    if (textoLower === 'm2') {
+        if (estaBloqueado(numero)) {
+            const expira = new Date(bloqueios[numero].expira).toLocaleString('pt-BR');
+            let msgBloqueio = config.bloqueio?.mensagem?.replace('{data}', expira) || '🔒 Bloqueado';
+            await msg.reply(msgBloqueio);
             return;
         }
+        
+        await msg.reply('🧪 Gerando seu teste...\n\n⏱️ Só um instante.');
+        const resposta = await gerarTesteM2(numero);
+        await msg.reply(resposta);
+        return;
     }
 
-    // Demais comandos do painel
-    for (let [cmd, dados] of Object.entries(config.comandos)) {
-        if (dados.ativo && correspondeComando(textoLower, cmd)) {
-            
-            if (cmd.toLowerCase() === 'm2') {
-                if (estaBloqueado(numero)) {
-                    const expira = new Date(bloqueios[numero].expira).toLocaleString('pt-BR');
-                    let msgBloqueio = config.bloqueio?.mensagem || '🔒 Bloqueado até {data}';
-                    msgBloqueio = msgBloqueio.replace('{data}', expira);
-                    await msg.reply(msgBloqueio);
-                    return;
-                }
-                
-                await msg.reply('🧪 Gerando teste...');
-                const resposta = await gerarTesteM2(numero);
-                await msg.reply(resposta);
-                return;
-            }
-            
-            await msg.reply(dados.resposta);
-            return;
-        }
-    }
-
-    // IA (fallback apenas)
+    // IA com Gemini
     const respostaIA = await responderComIA(numero, texto);
     if (respostaIA) {
         await msg.reply(respostaIA);
     }
 });
 
-// ========== MONITORAR CONFIG ==========
-fs.watch(CONFIG_FILE, () => {
-    try {
-        config = JSON.parse(fs.readFileSync(CONFIG_FILE));
-        console.log('🔄 Configuração atualizada');
-    } catch (e) {}
+// ========== DETECTAR RESPOSTAS DO ADMIN ==========
+client.on('message', async (msg) => {
+    if (!msg.fromMe) return;
+    
+    const chatId = msg.to;
+    if (chatId && !chatId.endsWith('@g.us') && chatId !== 'status@broadcast') {
+        console.log(`👤 Admin respondeu para ${chatId.split('@')[0]}`);
+        humanoAssumiuChat(chatId);
+    }
 });
 
 client.initialize();
